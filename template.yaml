@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: API Gateway, Lambda, Cognito
+
+Resources:
+  inboundQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 1209600
+      QueueName: !Sub ${AWS::StackName}-inboundQueue
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 100
+
+  processInboundQueue:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub ${AWS::StackName}-processInboundQueue
+      CodeUri: src/
+      Handler: processInboundQueue/index.handler
+      Runtime: nodejs12.x
+      MemorySize: 256
+      Timeout: 90
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt inboundQueue.Arn
+            BatchSize: 10
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !Ref inboundQueue
+Outputs:
+  SQSUrl:
+    Description: URL to the sqs queue
+    Value: !Ref inboundQueue
